@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { Sparkles, Trash2, Download, Home } from "lucide-react";
+import { Sparkles, Trash2, Download, Home, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Meme {
@@ -38,6 +38,43 @@ const Gallery = () => {
     a.download = `meme-${meme.id}.png`;
     a.click();
     toast.success("Meme downloaded!");
+  };
+
+  const shareMeme = async (meme: Meme, platform: string) => {
+    const text = `Check out my meme! ${meme.topText} ${meme.bottomText}`;
+    const memeUrl = encodeURIComponent(window.location.origin + "/gallery");
+
+    switch (platform) {
+      case "whatsapp":
+        window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + memeUrl)}`, "_blank");
+        break;
+      case "facebook":
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${memeUrl}`, "_blank");
+        break;
+      case "x":
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${memeUrl}`, "_blank");
+        break;
+      case "instagram":
+        // Instagram doesn't support web sharing, so we try native share or download
+        if (navigator.share) {
+          try {
+            const response = await fetch(meme.data);
+            const blob = await response.blob();
+            const file = new File([blob], `meme-${meme.id}.png`, { type: "image/png" });
+            await navigator.share({
+              files: [file],
+              title: "My Meme",
+              text: text,
+            });
+          } catch (error) {
+            toast.error("Share failed. Try downloading instead.");
+          }
+        } else {
+          downloadMeme(meme);
+          toast.info("Download the image and share it on Instagram!");
+        }
+        break;
+    }
   };
 
   return (
@@ -129,6 +166,50 @@ const Gallery = () => {
                       onClick={() => deleteMeme(meme.id)}
                     >
                       <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => shareMeme(meme, "whatsapp")}
+                      className="flex-1"
+                      title="Share on WhatsApp"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      WhatsApp
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => shareMeme(meme, "facebook")}
+                      className="flex-1"
+                      title="Share on Facebook"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Facebook
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => shareMeme(meme, "x")}
+                      className="flex-1"
+                      title="Share on X"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      X
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => shareMeme(meme, "instagram")}
+                      className="flex-1"
+                      title="Share on Instagram"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Instagram
                     </Button>
                   </div>
                 </div>

@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { Sparkles, Upload, Download, Home, Palette } from "lucide-react";
+import { Sparkles, Upload, Download, Home, Palette, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 const Editor = () => {
@@ -14,6 +14,7 @@ const Editor = () => {
   const [bottomText, setBottomText] = useState("");
   const [fontSize, setFontSize] = useState(48);
   const [textColor, setTextColor] = useState("#FFFFFF");
+  const [showShareButtons, setShowShareButtons] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -104,8 +105,49 @@ const Editor = () => {
         localStorage.setItem("memes", JSON.stringify(savedMemes.slice(0, 50))); // Keep last 50
         
         toast.success("Meme downloaded and saved to gallery!");
+        setShowShareButtons(true);
       }
     });
+  };
+
+  const shareMeme = async (platform: string) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const text = `Check out my meme! ${topText} ${bottomText}`;
+    const memeUrl = encodeURIComponent(window.location.origin);
+
+    switch (platform) {
+      case "whatsapp":
+        window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + memeUrl)}`, "_blank");
+        break;
+      case "facebook":
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${memeUrl}`, "_blank");
+        break;
+      case "x":
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${memeUrl}`, "_blank");
+        break;
+      case "instagram":
+        if (navigator.share) {
+          try {
+            canvas.toBlob(async (blob) => {
+              if (blob) {
+                const file = new File([blob], `meme-${Date.now()}.png`, { type: "image/png" });
+                await navigator.share({
+                  files: [file],
+                  title: "My Meme",
+                  text: text,
+                });
+              }
+            });
+          } catch (error) {
+            toast.error("Share failed. Meme already downloaded!");
+          }
+        } else {
+          toast.info("Meme downloaded! Share it manually on Instagram.");
+        }
+        break;
+    }
   };
 
   return (
@@ -169,17 +211,67 @@ const Editor = () => {
                       ref={canvasRef}
                       className="max-w-full h-auto mx-auto rounded-lg shadow-xl"
                     />
-                    <div className="flex justify-center gap-4 mt-6">
-                      <Button
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        Change Image
-                      </Button>
-                      <Button variant="hero" onClick={downloadMeme}>
-                        <Download className="w-4 h-4" />
-                        Download Meme
-                      </Button>
+                    <div className="space-y-4 mt-6">
+                      <div className="flex justify-center gap-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Change Image
+                        </Button>
+                        <Button variant="hero" onClick={downloadMeme}>
+                          <Download className="w-4 h-4" />
+                          Download Meme
+                        </Button>
+                      </div>
+                      
+                      {showShareButtons && (
+                        <div className="space-y-2">
+                          <p className="text-center text-sm text-muted-foreground">
+                            Share on social media:
+                          </p>
+                          <div className="flex justify-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => shareMeme("whatsapp")}
+                              title="Share on WhatsApp"
+                            >
+                              <Share2 className="w-4 h-4" />
+                              WhatsApp
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => shareMeme("facebook")}
+                              title="Share on Facebook"
+                            >
+                              <Share2 className="w-4 h-4" />
+                              Facebook
+                            </Button>
+                          </div>
+                          <div className="flex justify-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => shareMeme("x")}
+                              title="Share on X"
+                            >
+                              <Share2 className="w-4 h-4" />
+                              X
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => shareMeme("instagram")}
+                              title="Share on Instagram"
+                            >
+                              <Share2 className="w-4 h-4" />
+                              Instagram
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <input
                       ref={fileInputRef}
