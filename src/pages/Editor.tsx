@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { Sparkles, Upload, Download, Home, Palette, Share2 } from "lucide-react";
 import { toast } from "sonner";
+import ShareButtons from "@/components/ShareButtons";
+
 
 const Editor = () => {
   const [image, setImage] = useState<string | null>(null);
@@ -79,36 +81,65 @@ const Editor = () => {
     img.src = image;
   };
 
-  const downloadMeme = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `meme-${Date.now()}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        // Save to gallery (localStorage)
-        const memeData = canvas.toDataURL();
-        const savedMemes = JSON.parse(localStorage.getItem("memes") || "[]");
-        savedMemes.unshift({
-          id: Date.now(),
-          data: memeData,
-          topText,
-          bottomText,
-          createdAt: new Date().toISOString(),
-        });
-        localStorage.setItem("memes", JSON.stringify(savedMemes.slice(0, 50))); // Keep last 50
-        
-        toast.success("Meme downloaded and saved to gallery!");
-        setShowShareButtons(true);
+  // Fonction pour uploader l'image sur ton backend / Cloudinary
+const uploadToCloudinary = async (canvas: HTMLCanvasElement) => {
+  return new Promise<string>((resolve, reject) => {
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        reject("Blob non créé à partir du canvas");
+        return;
       }
+
+      const formData = new FormData();
+      formData.append("image", blob, "meme.png");
+
+      try {
+        // ⚠️ Remplace l'URL par celle de TON backend Render
+        const response = await fetch("https://ton-backend.onrender.com/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error("Échec de l’upload");
+        const data = await response.json();
+        resolve(data.url); // Lien public Cloudinary
+      } catch (error) {
+        reject(error);
+      }
+    }, "image/png");
+  });
+};
+
+const downloadMeme = async () => {
+  const canvas = canvasRef.current;
+  if (!canvas) return;
+
+  try {
+    const imageUrl = await uploadToCloudinary(canvas);
+    toast.success("✅ Meme uploaded successfully!");
+    console.log("Lien Cloudinary :", imageUrl);
+
+    // Sauvegarde locale
+    const memeData = canvas.toDataURL();
+    const savedMemes = JSON.parse(localStorage.getItem("memes") || "[]");
+    savedMemes.unshift({
+      id: Date.now(),
+      data: memeData,
+      cloudinaryUrl: imageUrl,
+      topText,
+      bottomText,
+      createdAt: new Date().toISOString(),
     });
-  };
+    localStorage.setItem("memes", JSON.stringify(savedMemes.slice(0, 50)));
+
+    setShowShareButtons(true);
+  } catch (error) {
+    toast.error("❌ Upload failed!");
+    console.error(error);
+  }
+};
+
+  
 
   const shareMeme = async (platform: string) => {
     const canvas = canvasRef.current;
@@ -225,53 +256,15 @@ const Editor = () => {
                         </Button>
                       </div>
                       
+                      
                       {showShareButtons && (
-                        <div className="space-y-2">
-                          <p className="text-center text-sm text-muted-foreground">
-                            Share on social media:
-                          </p>
-                          <div className="flex justify-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => shareMeme("whatsapp")}
-                              title="Share on WhatsApp"
-                            >
-                              <Share2 className="w-4 h-4" />
-                              WhatsApp
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => shareMeme("facebook")}
-                              title="Share on Facebook"
-                            >
-                              <Share2 className="w-4 h-4" />
-                              Facebook
-                            </Button>
-                          </div>
-                          <div className="flex justify-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => shareMeme("x")}
-                              title="Share on X"
-                            >
-                              <Share2 className="w-4 h-4" />
-                              X
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => shareMeme("instagram")}
-                              title="Share on Instagram"
-                            >
-                              <Share2 className="w-4 h-4" />
-                              Instagram
-                            </Button>
-                          </div>
+                        <div className="space-y-2 text-center">
+                          <p className="text-sm text-muted-foreground">Share your meme:</p>
+                          <ShareButtons memeUrl={window.location.href} memeText={`${topText} ${bottomText}`} />
                         </div>
                       )}
+
+                      
                     </div>
                     <input
                       ref={fileInputRef}

@@ -6,6 +6,11 @@ import { Sparkles, Trash2, Download, Home, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 
+
+
+
+
+
 interface Meme {
   id: number;
   data: string;
@@ -178,10 +183,7 @@ const Gallery = () => {
                       className="flex-1"
                       title="Share on WhatsApp"
                     >
-<<<<<<< HEAD
-=======
                       
->>>>>>> 785d8bc (Ajout du backend meme-share-backend et ShareButtons, modifications Editor et Gallery pour partage des memes)
                       <Share2 className="w-4 h-4" />
                       WhatsApp
                     </Button>
