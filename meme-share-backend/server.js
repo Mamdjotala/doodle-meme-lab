@@ -7,7 +7,7 @@ import { v2 as cloudinary } from "cloudinary";
 import streamifier from "streamifier";
 
 
-app.get('/healthz', (req, res) => res.send('OK'));
+
 
 
 dotenv.config();
@@ -20,6 +20,7 @@ app.use(cors({
 app.use(express.json({ limit: "10mb" }));
 const upload = multer();
 
+app.get('/healthz', (req, res) => res.send('OK'));
 // Config Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
