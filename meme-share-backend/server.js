@@ -1,13 +1,20 @@
+
 import express from "express";
-import multer from "multer";
 import cors from "cors";
-import { v2 as cloudinary } from "cloudinary";
+import multer from "multer";
 import dotenv from "dotenv";
+import { v2 as cloudinary } from "cloudinary";
+import streamifier from "streamifier";
 
 dotenv.config();
 const app = express();
-const upload = multer({ storage: multer.memoryStorage() });
-app.use(cors());
+
+app.use(cors({
+  origin: "*", // ou ton frontend: "http://localhost:5173"
+  methods: ["POST", "GET", "OPTIONS"],
+}));
+app.use(express.json({ limit: "10mb" }));
+const upload = multer();
 
 // Config Cloudinary
 cloudinary.config({
@@ -16,21 +23,39 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Route d'upload
+// Route test
+app.get("/", (req, res) => {
+  res.send("✅ Meme backend running");
+});
+
+// Route upload
 app.post("/upload", upload.single("image"), async (req, res) => {
   try {
-    const b64 = Buffer.from(req.file.buffer).toString("base64");
-    const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+    console.log("Fichier reçu :", req.file);
 
-    const result = await cloudinary.uploader.upload(dataURI, {
-      folder: "memes_temp",
-    });
+    if (!req.file) {
+      return res.status(400).json({ error: "Aucun fichier reçu" });
+    }
 
-    res.json({ url: result.secure_url });
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "memes" },
+      (error, result) => {
+        if (error) {
+          console.error("Erreur Cloudinary :", error);
+          return res.status(500).json({ error: "Erreur upload Cloudinary" });
+        }
+
+        console.log("✅ Upload Cloudinary réussi :", result.secure_url);
+        res.json({ imageUrl: result.secure_url }); // 🔹 ESSENTIEL pour le frontend
+      }
+    );
+
+    streamifier.createReadStream(req.file.buffer).pipe(stream);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Upload failed" });
+    console.error("Erreur serveur :", err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
 
-app.listen(4000, () => console.log("🚀 Server running on port 4000"));
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
