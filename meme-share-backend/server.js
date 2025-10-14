@@ -6,6 +6,10 @@ import dotenv from "dotenv";
 import { v2 as cloudinary } from "cloudinary";
 import streamifier from "streamifier";
 
+
+app.get('/healthz', (req, res) => res.send('OK'));
+
+
 dotenv.config();
 const app = express();
 
